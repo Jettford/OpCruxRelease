@@ -9,10 +9,6 @@
 #include "Entity/Components/SimplePhysicsComponent.hpp"
 #include "Entity/Components/ControllablePhysicsComponent.hpp"
 
-#include "bullet3-2.89/src/btBulletDynamicsCommon.h"
-#include "bullet3-2.89/src/btBulletCollisionCommon.h"
-#include "bullet3-2.89/src/BulletCollision/CollisionDispatch/btGhostObject.h"
-
 using namespace DataTypes;
 
 class PhantomPhysicsComponent : public IEntityComponent {
@@ -42,12 +38,6 @@ public:
 	static constexpr int GetTypeID() { return 40; }
 
 	void Serialize(RakNet::BitStream * factory, ReplicaTypes::PacketTypes packetType) {
-		// Enable dirty flags on creation
-		/*ENABLE_FLAG_ON_CONSTRUCTION(_isDirtyFlagPosRot);
-		ENABLE_FLAG_ON_CONSTRUCTION(_isDirtyFlagPhysEffectDirection);
-		ENABLE_FLAG_ON_CONSTRUCTION(_isDirtyFlagEffects);*/
-
-		// Position, Rotation
 		bool tmpFlag = false;
 		tmpFlag = _isDirtyFlagPosRot;
 		factory->Write(tmpFlag);
@@ -92,13 +82,6 @@ public:
 	}
 
 	void PhysicUpdate() {
-		/*
-			Since we don't have propper physic detection yet,
-			we will currently use a sphere with the radius of 1 times scale,
-			since the default collision object is a 2x2x2 box, if a hkx file is missing.
-		*/
-
-		// Get own position
 		Vector3 pos = Vector3::zero();
 		ControllablePhysicsComponent * contPhysComp = owner->GetComponent<ControllablePhysicsComponent>();
 		if (contPhysComp) {

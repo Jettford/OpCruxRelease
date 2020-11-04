@@ -11,8 +11,6 @@
 #include <RakNet/ReplicaManager.h>
 #include <RakNet/NetworkIDManager.h>
 
-#include <bullet3-2.89/src/btBulletDynamicsCommon.h>
-
 #include "Enums/EPackets.hpp"
 #include "Enums/ERemoteConnection.hpp"
 #include "Enums/ESystem.hpp"
@@ -124,27 +122,6 @@ WorldServer::WorldServer(int zone, int instanceID, int cloneID, int port) : m_po
 	WorldInstanceManager::AddWorldServer(m_port, this);
 
 	if (zone != 0) {
-		/// collision configuration contains default setup for memory, collision setup.
-		/// Advanced users can create their own configuration.
-		collisionConfiguration = new btDefaultCollisionConfiguration();
-
-		/// use the default collision dispatcher. For parallel processing you can use a diffent
-		/// dispatcher(see Extras / BulletMultiThreaded)
-		collisionDispatcher = new btCollisionDispatcher(collisionConfiguration);
-
-		/// btDbvtBroadphase is a good general purpose broadphase. You can also try out
-		/// btAxis3Sweep.
-		overlappingPairCache = new btDbvtBroadphase();
-
-		/// the default constraint solver. For parallel processing you can use a different solver
-		/// (see Extras / BulletMultiThreaded)
-		constraintSolver = new btSequentialImpulseConstraintSolver();
-
-		/// Create physic world
-		dynamicsWorld = new btDiscreteDynamicsWorld(collisionDispatcher, overlappingPairCache, constraintSolver, collisionConfiguration);
-
-		// Set gravity
-		dynamicsWorld->setGravity(btVector3(0, -CacheWorldConfig::GetPEGravityValue(), 0));
 
 		// Get zone file
 		std::string zoneName = CacheZoneTable::GetZoneName(zone);
@@ -322,7 +299,6 @@ void WorldServer::GameLoopThread() {
 		m_lock.lock();
 		objectsManager->OnUpdate();
 		timer.Update();
-		//dynamicsWorld->stepSimulation(0.0166667f, 10);
 		objectsManager->OnPhysicsUpdate();
 		m_lock.unlock();
 		RakSleep(30);
@@ -479,12 +455,6 @@ void WorldServer::handlePacket(RakPeerInterface* rakServer, LUPacket * packet) {
 				DataTypes::LWOOBJID objectID;
 				data->Read(objectID);
 				clientSession->actorID = objectID;
-
-				//PacketFactory::General::doDisconnect(rakServer, packet->getSystemAddress(), Enums::EDisconnectReason::PLAY_SCHEDULE_TIME_DONE);
-				//PacketFactory::World::CreateCharacter(rakServer, clientSession);
-				
-				// PacketFactory::World::LoadStaticZone(rakServer, clientSession, luZone->zoneID, 0, 0, luZone->revisionChecksum, luZone->spawnPos.pos, 0);
-
 				masterServerBridge->ClientCharAuth(clientSession, m_port, objectID);
 
 				break;
@@ -501,9 +471,7 @@ void WorldServer::handlePacket(RakPeerInterface* rakServer, LUPacket * packet) {
 				data->Read(messageID);
 
 				Logger::log("WRLD", "Received Game Message ID #" + std::to_string(messageID));
-				
-				// StartSkill, we use it currently for debugging purpose.
-				// Following code logs the nearest object around the player when punching.
+				 
 				if (messageID == 0x77) {
 					Entity::GameObject * player = objectsManager->GetObjectByID(objectID);
 					DataTypes::Vector3 playerPos = player->GetPosition();
@@ -540,11 +508,7 @@ void WorldServer::handlePacket(RakPeerInterface* rakServer, LUPacket * packet) {
 				Logger::log("WRLD", "Client load complete ZoneID: " + std::to_string(zoneID) + " MapInstance: " + std::to_string(mapInstance) + " MapClone: " + std::to_string(mapClone));
 
 				
-				/*Entity::GameObject * testStromling = new Entity::GameObject(this, 4712);
-				testStromling->SetObjectID(288334496658198693ULL); // Random ID
-				ControllablePhysicsComponent * scpComp = (ControllablePhysicsComponent*)testStromling->GetComponentByID(1);
-				scpComp->SetPosition(luZone->spawnPos->pos);
-				scpComp->SetRotation(Quaternion(0,0,0,0));*/
+				
 
 				Logger::log("WRLD", "Construct player");
 				replicaManager->AddParticipant(clientSession->systemAddress);

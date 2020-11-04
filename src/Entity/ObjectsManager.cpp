@@ -1,7 +1,5 @@
 #include "Entity/ObjectsManager.hpp"
 
-#include "bullet3-2.89/src/btBulletDynamicsCommon.h"
-
 ObjectsManager::ObjectsManager()
 {
 }

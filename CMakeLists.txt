@@ -23,17 +23,10 @@ include_directories(include)
 include_directories(libs)
 include_directories(libs/odbc-cpp-wrapper/src)
 include_directories(src)
-include_directories(tests)
-
-INCLUDE_DIRECTORIES(
-${BULLET_PHYSICS_SOURCE_DIR}/src
-)
 
 find_package(ODBC REQUIRED)
 
 add_executable(OpCrux_Server
-	libs/glad/include/glad/glad.h
-	libs/glad/src/glad.c
 	libs/libbcrypt/include/bcrypt/bcrypt.h
 	libs/libbcrypt/include/bcrypt/BCrypt.hpp
 	libs/libbcrypt/include/bcrypt/crypt.h
@@ -257,30 +250,6 @@ add_executable(OpCrux_Server
 	src/Exceptions/ExNetException.hpp
 	src/FileTypes/GFile/GeometryFile.cpp
 	src/FileTypes/GFile/GeometryFile.hpp
-	src/FileTypes/HKXFile/Classes/hkBaseObject.hpp
-	src/FileTypes/HKXFile/Classes/hkClass.hpp
-	src/FileTypes/HKXFile/Classes/hkpEntity.hpp
-	src/FileTypes/HKXFile/Classes/hkpPhysicsData.hpp
-	src/FileTypes/HKXFile/Classes/hkpPhysicsSystem.hpp
-	src/FileTypes/HKXFile/Classes/hkpRigidBody.hpp
-	src/FileTypes/HKXFile/Classes/hkpWorldObject.hpp
-	src/FileTypes/HKXFile/Classes/hkReferencedObject.hpp
-	src/FileTypes/HKXFile/Classes/hkRootLevelContainer.hpp
-	src/FileTypes/HKXFile/hkClassEnum.hpp
-	src/FileTypes/HKXFile/hkClassMember.hpp
-	src/FileTypes/HKXFile/hkClassName.hpp
-	src/FileTypes/HKXFile/hkDataObject.hpp
-	src/FileTypes/HKXFile/hkEnum.hpp
-	src/FileTypes/HKXFile/hkLink.hpp
-	src/FileTypes/HKXFile/hkPointer.hpp
-	src/FileTypes/HKXFile/hkType.hpp
-	src/FileTypes/HKXFile/hkTypeMember.hpp
-	src/FileTypes/HKXFile/hkVariant.hpp
-	src/FileTypes/HKXFile/HKXCacheManager.cpp
-	src/FileTypes/HKXFile/HKXCacheManager.hpp
-	src/FileTypes/HKXFile/hkxFile.cpp
-	src/FileTypes/HKXFile/hkxFile.hpp
-	src/FileTypes/HKXFile/hkxHeader.hpp
 	src/FileTypes/INIFile/ConfFile.hpp
 	src/FileTypes/LUZFile/LUZone.cpp
 	src/FileTypes/LUZFile/LUZone.hpp
@@ -336,10 +305,6 @@ add_executable(OpCrux_Server
 	src/PacketFactory/General/GeneralPackets.hpp
 	src/PacketFactory/World/WorldPackets.hpp
 	src/PacketFactory/Chat/ChatPackets.hpp
-	src/Rendering/DebugRenderer.cpp
-	src/Rendering/DebugRenderer.hpp
-	src/Rendering/UGCRenderer.cpp
-	src/Rendering/UGCRenderer.hpp
 	src/Replica/ReplicaTypes.hpp
 	src/Server/Bridges/BridgeMasterServer.cpp
 	src/Server/Bridges/BridgeMasterServer.hpp
@@ -350,8 +315,6 @@ add_executable(OpCrux_Server
 	src/Server/AuthServer.hpp
 	src/Server/MasterServer.cpp
 	src/Server/MasterServer.hpp
-	src/Server/UGCServer.cpp
-	src/Server/UGCServer.hpp
 	src/Server/WorldServer.cpp
 	src/Server/WorldServer.hpp
 	src/Sessions/ClientSession.hpp
@@ -369,17 +332,9 @@ add_executable(OpCrux_Server
 	src/Utils/StringUtils.hpp
 	src/Utils/RandomUtil.hpp 
 	src/Utils/RandomUtil.cpp
-	src/API/API.cpp
-	src/API/API.hpp
 	src/Main.cpp
-	src/camera.h
-	src/camera.cpp
-	${SDL_INCLUDE}  "src/Entity/GameMessages/PickupCurrency.hpp" "src/Entity/GameMessages/UpdatePlayerStatistic.hpp" "src/Entity/GameMessages/SetCurrency.hpp"  "src/Configuration/ConfGeneral.hpp" "src/Entity/Components/SlashCommandComponent.cpp" "src/Entity/GameMessages/SetPlayerControlScheme.hpp") 
+	"src/Entity/GameMessages/PickupCurrency.hpp" "src/Entity/GameMessages/UpdatePlayerStatistic.hpp" "src/Entity/GameMessages/SetCurrency.hpp"  "src/Configuration/ConfGeneral.hpp" "src/Entity/Components/SlashCommandComponent.cpp" "src/Entity/GameMessages/SetPlayerControlScheme.hpp") 
 	
-
-
-set_property(TARGET glad PROPERTY CXX_STANDARD 98)
-set_property(TARGET json PROPERTY CXX_STANDARD 98)
 set_property(TARGET Mongoose PROPERTY CXX_STANDARD 98)
 set_property(TARGET RakNet PROPERTY CXX_STANDARD 98)
 set_property(TARGET rapidxml PROPERTY CXX_STANDARD 98)
@@ -391,67 +346,21 @@ IF(WIN32)
 	SET(BUILD_SHARED_LIBS OFF CACHE BOOL "Shared Libs" FORCE)
 ENDIF(WIN32)
 
-#some code to support OpenGL and Glew cross platform
-IF (WIN32)
-        INCLUDE_DIRECTORIES(
-             ${BULLET_PHYSICS_SOURCE_DIR}/btgui/OpenGLWindow/GlewWindows
-        )
-        ADD_DEFINITIONS(-DGLEW_STATIC)
-	LINK_LIBRARIES( ${OPENGL_gl_LIBRARY} ${OPENGL_glu_LIBRARY} )
-ELSE(WIN32)
-        IF(APPLE)
-                find_library(COCOA NAMES Cocoa)
-                MESSAGE(${COCOA})
-                link_libraries(${COCOA} ${OPENGL_gl_LIBRARY} ${OPENGL_glu_LIBRARY})
-
-        ELSE(APPLE)
-                INCLUDE_DIRECTORIES(
-                        ${BULLET_PHYSICS_SOURCE_DIR}/btgui/OpenGLWindow/GlewWindows
-                )
-                ADD_DEFINITIONS("-DGLEW_INIT_OPENGL11_FUNCTIONS=1")
-                ADD_DEFINITIONS("-DGLEW_STATIC")
-                ADD_DEFINITIONS("-DGLEW_DYNAMIC_LOAD_ALL_GLX_FUNCTIONS=1")
-
-                LINK_LIBRARIES(  pthread ${DL} )
-        ENDIF(APPLE)
-ENDIF(WIN32)
-
 if(WIN32)
 	target_link_libraries(OpCrux_Server
 		wsock32
 		ws2_32
 		odbc32
-		opengl32
-		glu32
-		../../../libs/SDL/lib/x64/SDL2
-		../../../libs/SDL/lib/x64/SDL2main
 	)
 endif()
 if(UNIX)
 	target_link_libraries(OpCrux_Server
 		pthread
 		odbc
-		GL
-		GLU
-		SDL2
-		SDL2main
 	)
 endif()
 
 target_link_libraries(OpCrux_Server
-	
-	OpenGLWindow
-	BulletDynamics
-	BulletCollision
-	LinearMath
-	Bullet3Common
-	Bullet3Collision
-	Bullet3Dynamics
-	Bullet3Geometry
-	Bullet3OpenCL_clew
-	Bullet2FileLoader
-	glfw
-	json
 	Mongoose
 	RakNet
 	rapidxml

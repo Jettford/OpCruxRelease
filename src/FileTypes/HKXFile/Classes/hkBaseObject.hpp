@@ -1,8 +1,0 @@
-#ifndef __FILETYPES__HKXFILE__CLASSES__HKBASEOBJECT_HPP__
-#define __FILETYPES__HKXFILE__CLASSES__HKBASEOBJECT_HPP__
-
-class hkBaseObject {
-
-};
-
-#endif
