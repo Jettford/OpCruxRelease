@@ -58,7 +58,6 @@ AuthServer* authServer = nullptr;
 
 
 int main(int argc, char* argv[]) {
-	FileUtils::ChangeDirectory();
 	Configuration::ConfigurationManager::Load();
 	ServerInfo::init();
 
@@ -100,9 +99,6 @@ int main(int argc, char* argv[]) {
 			std::system("title OpCrux Server (Auth only)");
 #endif
 		}
-		else if (arg == "--worldID" && i < argc) {
-			givenWorldID = std::stoi(argv[i + 1]);
-		}
 
 		if (argc >= 4) {
 			ipMaster = argv[i + 1];
@@ -125,7 +121,16 @@ int main(int argc, char* argv[]) {
 		aT.detach();
 	}
 
-	while (ServerInfo::bRunning) {RakSleep(30);}
+	while (ServerInfo::bRunning) {
+		std::string input;
+		std::cin >> input;
+		
+		std::vector<std::string> Args = StringUtils::splitString(input, ' ');
+		
+		if (Args[0] == "/adduser") {
+			
+		}
+	}
 	
 	return 0;
 }

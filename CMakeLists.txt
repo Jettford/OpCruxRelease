@@ -333,7 +333,7 @@ add_executable(OpCrux_Server
 	src/Utils/RandomUtil.hpp 
 	src/Utils/RandomUtil.cpp
 	src/Main.cpp
-	"src/Entity/GameMessages/PickupCurrency.hpp" "src/Entity/GameMessages/UpdatePlayerStatistic.hpp" "src/Entity/GameMessages/SetCurrency.hpp"  "src/Configuration/ConfGeneral.hpp" "src/Entity/Components/SlashCommandComponent.cpp" "src/Entity/GameMessages/SetPlayerControlScheme.hpp") 
+	"src/Entity/GameMessages/PickupCurrency.hpp" "src/Entity/GameMessages/UpdatePlayerStatistic.hpp" "src/Entity/GameMessages/SetCurrency.hpp"  "src/Configuration/ConfGeneral.hpp" "src/Entity/Components/SlashCommandComponent.cpp" "src/Entity/GameMessages/SetPlayerControlScheme.hpp" ) 
 	
 set_property(TARGET Mongoose PROPERTY CXX_STANDARD 98)
 set_property(TARGET RakNet PROPERTY CXX_STANDARD 98)
@@ -365,6 +365,7 @@ target_link_libraries(OpCrux_Server
 	RakNet
 	rapidxml
 	odbccpp_static
+	CppSQLite3
 )
 
 

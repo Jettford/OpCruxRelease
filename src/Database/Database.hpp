@@ -3,7 +3,6 @@
 
 #define ODBC_STATIC
 
-// TODO: Figure out Linux solution
 #include <iostream>
 #include <sql.h>
 #include <sqlext.h>
@@ -15,6 +14,8 @@
 #include <odbc/Exception.h>
 #include <odbc/PreparedStatement.h>
 #include <odbc/ResultSet.h>
+
+#include <CppSQLite3/CppSQLite3.h>
 
 #include "Common/CrossPlatform.hpp"
 #include "Encryption/sha512.hpp"
@@ -54,8 +55,7 @@ public:
 
 		do
 		{
-			ret = SQLGetDiagRec(type, handle, ++i, state, &native, text,
-				sizeof(text), &len);
+			ret = SQLGetDiagRec(type, handle, ++i, state, &native, text, sizeof(text), &len);
 
 			std::string str = "";
 
@@ -80,8 +80,9 @@ public:
 
 			std::cout << " " << str.c_str() << std::endl;
 
-			if (SQL_SUCCEEDED(ret) || ret == SQL_ERROR)
+			if (SQL_SUCCEEDED(ret) || ret == SQL_ERROR) {
 				printf("[DATABASE] %s ->", text);
+			}
 		} while (ret == SQL_SUCCESS || ret == SQL_ERROR);
 	}
 
@@ -124,30 +125,21 @@ private:
 	inline static odbc::EnvironmentRef env = odbc::Environment::create();
 	inline static odbc::ConnectionRef conn;
 
+	inline static CppSQLite3DB OpCruxAD;
+	inline static CppSQLite3DB OpCruxCD;
+	inline static CppSQLite3DB OpCruxGD;
+
 public:
 	static SQLHANDLE GetSqlStmtHandle() {
 		return sqlStmtHandle;
 	}
 
 	static int Connect() {
-		Logger::log("DATABASE", "Attempting connection to SQL Server...");
+		Logger::log("DATABASE", "Attempting connection to SQLite...");
 
-		auto dbConf = &Configuration::ConfigurationManager::dbConf;
-
-		std::string connStrBuilder = \
-			"DRIVER={"\
-			+ dbConf->GetStringVal("DBConnection", "DBDRIVER")\
-			+ "};SERVER="\
-			+ dbConf->GetStringVal("DBConnection", "DBHOST")\
-			+ ";UID="\
-			+ dbConf->GetStringVal("DBConnection", "DBUSER")\
-			+ ";PWD="\
-			+ dbConf->GetStringVal("DBConnection", "DBPASS")\
-			+ ";";
-
-		conn = env->createConnection();
-		conn->connect(connStrBuilder.c_str());
-		conn->setAutoCommit(true);
+		OpCruxAD.open("OpCruxAD.sqlite");
+		OpCruxCD.open("OpCruxCD.sqlite");
+		OpCruxGD.open("OpCruxGD.sqlite");
 
 		return 0;
 	}
@@ -155,7 +147,9 @@ public:
 	static void Disconnect() {
 		Logger::log("DATABASE", "WARNING!!!! DATABASE HAS BEEN UNLOADED!", LogType::ERR);
 
-		conn->disconnect();
+		OpCruxAD.close();
+		OpCruxCD.close();
+		OpCruxGD.close();
 	}
 
 	static bool IsLoginCorrect(char16_t* username, char16_t* password) {
@@ -165,21 +159,17 @@ public:
 		std::string s_password(w_password.begin(), w_password.end());
 
 		std::string h_password = sha512(s_password);
-
-		odbc::PreparedStatementRef stmt = conn->prepareStatement("SELECT password FROM OPCRUX_AD.dbo.Accounts WHERE username=?");
-		stmt->setString(1, s_username);
-		odbc::ResultSetRef rs = stmt->executeQuery();
-		if (rs->next()) {
-			std::string db_hash = *rs->getString(1);
-			std::string dbhash = "DB_HASH: " + db_hash;
-			std::string pkhash = "PK_HASH: " + h_password;
-			Logger::log("DATABASE", dbhash);
-			Logger::log("DATABASE", pkhash);
-
-			return (db_hash == h_password);
+		CppSQLite3Statement stmt = OpCruxAD.compileStatement("SELECT password FROM Accounts WHERE username=?");
+		stmt.bind(1, s_username.c_str());
+		CppSQLite3Query query = stmt.execQuery();
+		
+		for (int i = 0; i < query.numFields(); ++i) {
+			if (query.fieldIsNull(i)) {
+				return false;
+			}
 		}
 
-		return false;
+		return (query.getStringField(0) == h_password);
 	}
 
 	static bool APILoginCheck(std::string s_username, std::string s_password) {
@@ -200,67 +190,75 @@ public:
 
 	static unsigned long long reserveCountedID(DBCOUNTERID dbCounterID) {
 
-		const char* query;
+		const char* sql;
 		switch (dbCounterID) {
 		case DBCOUNTERID::STATIC:
-			query = "SELECT counter FROM OPCRUX_CD.dbo.IDCounter WHERE type='STATIC';UPDATE OPCRUX_CD.dbo.IDCounter SET counter=(counter+1) WHERE type='STATIC';";
+			sql = "SELECT counter FROM OPCRUX_CD.dbo.IDCounter WHERE type='STATIC';UPDATE IDCounter SET counter=(counter+1) WHERE type='STATIC';";
 			break;
 		case DBCOUNTERID::PLAYER:
-			query = "SELECT counter FROM OPCRUX_CD.dbo.IDCounter WHERE type='PLAYER';UPDATE OPCRUX_CD.dbo.IDCounter SET counter=(counter+1) WHERE type='PLAYER';";
+			sql = "SELECT counter FROM OPCRUX_CD.dbo.IDCounter WHERE type='PLAYER';UPDATE IDCounter SET counter=(counter+1) WHERE type='PLAYER';";
 			break;
 		case DBCOUNTERID::P_STYLE:
-			query = "SELECT counter FROM OPCRUX_CD.dbo.IDCounter WHERE type='P_STYLE';UPDATE OPCRUX_CD.dbo.IDCounter SET counter=(counter+1) WHERE type='P_STYLE';";
+			sql = "SELECT counter FROM OPCRUX_CD.dbo.IDCounter WHERE type='P_STYLE';UPDATE IDCounter SET counter=(counter+1) WHERE type='P_STYLE';";
 			break;
 		case DBCOUNTERID::P_STATS:
-			query = "SELECT counter FROM OPCRUX_CD.dbo.IDCounter WHERE type='P_STATS';UPDATE OPCRUX_CD.dbo.IDCounter SET counter=(counter+1) WHERE type='P_STATS';";
+			sql = "SELECT counter FROM OPCRUX_CD.dbo.IDCounter WHERE type='P_STATS';UPDATE IDCounter SET counter=(counter+1) WHERE type='P_STATS';";
 			break;
 		default:
 			return -1;
 		}
 
-		odbc::PreparedStatementRef stmt = conn->prepareStatement(query);
-		odbc::ResultSetRef rs = stmt->executeQuery();
-		if (rs->next()) {
-			return *rs->getLong(1);
+		CppSQLite3Statement stmt = OpCruxCD.compileStatement(sql);
+		CppSQLite3Query query = stmt.execQuery();
+
+		for (int i = 0; i < query.numFields(); ++i) {
+			if (query.fieldIsNull(i)) {
+				return -1;
+			}
 		}
-		return -1;
+
+		return query.getIntField(0);
 	}
 
 	static int GetCharCount(unsigned long accountID) {
-		odbc::PreparedStatementRef stmt = conn->prepareStatement("SELECT COUNT(objectID) FROM OPCRUX_GD.dbo.Characters WHERE accountID=?");
-		stmt->setUInt(1, accountID);
-		odbc::ResultSetRef rs = stmt->executeQuery();
-		if (rs->next()) {
-			return *rs->getInt(1);
+		CppSQLite3Statement stmt = OpCruxGD.compileStatement("SELECT COUNT(objectID) FROM OPCRUX_GD.dbo.Characters WHERE accountID=?");
+		stmt.bind(1, std::to_string(accountID).c_str());
+		CppSQLite3Query query = stmt.execQuery();
+
+		for (int i = 0; i < query.numFields(); ++i) {
+			if (query.fieldIsNull(i)) {
+				return 0;
+			}
 		}
 
-		return 0;
+		return query.getIntField(0);
 	}
 
 	static Str_DB_CharStyle GetCharStyle(unsigned long styleID) {
-		odbc::PreparedStatementRef stmt = conn->prepareStatement("SELECT headColor, head, chestColor, chest, legs, hairStyle, hairColor, leftHand, rightHand, eyebrowStyle, eyesStyle, mouthStyle FROM OPCRUX_GD.dbo.CharacterStyles WHERE id=?");
-		stmt->setUInt(1, styleID);
-		odbc::ResultSetRef rs = stmt->executeQuery();
+		CppSQLite3Statement stmt = OpCruxGD.compileStatement("SELECT headColor, head, chestColor, chest, legs, hairStyle, hairColor, leftHand, rightHand, eyebrowStyle, eyesStyle, mouthStyle FROM CharacterStyles WHERE id=?");
+		stmt.bind(1, std::to_string(styleID).c_str());
+		CppSQLite3Query query = stmt.execQuery();
 
-		if (rs->next()) {
-			Str_DB_CharStyle charStyle;
-			charStyle.headColor = *rs->getInt(1);
-			charStyle.head = *rs->getInt(2);
-			charStyle.chestColor = *rs->getInt(3);
-			charStyle.chest = *rs->getInt(4);
-			charStyle.legs = *rs->getInt(5);
-			charStyle.hairStyle = *rs->getInt(6);
-			charStyle.hairColor = *rs->getInt(7);
-			charStyle.leftHand = *rs->getInt(8);
-			charStyle.rightHand = *rs->getInt(9);
-			charStyle.eyebrowStyle = *rs->getInt(10);
-			charStyle.eyesStyle = *rs->getInt(11);
-			charStyle.mouthStyle = *rs->getInt(12);
-
-			return charStyle;
+		for (int i = 0; i < query.numFields(); ++i) {
+			if (query.fieldIsNull(i)) {
+				return {};
+			}
 		}
 
-		return {};
+		Str_DB_CharStyle charStyle;
+		charStyle.headColor = query.getIntField(0);
+		charStyle.head = query.getIntField(1);
+		charStyle.chestColor = query.getIntField(2);
+		charStyle.chest = query.getIntField(3);
+		charStyle.legs = query.getIntField(4);
+		charStyle.hairStyle = query.getIntField(5);
+		charStyle.hairColor = query.getIntField(6);
+		charStyle.leftHand = query.getIntField(7);
+		charStyle.rightHand = query.getIntField(8);
+		charStyle.eyebrowStyle = query.getIntField(9);
+		charStyle.eyesStyle = query.getIntField(10);
+		charStyle.mouthStyle = query.getIntField(11);
+		return charStyle;
 	}
 
 	static std::vector<Str_DB_CharInfo> GetChars(unsigned long accountID) {

@@ -117,7 +117,6 @@ CREATE TABLE [dbo].[Accounts](
 GO
 
 USE OPCRUX_CD;
-
 CREATE TABLE [dbo].[IDCounter](
 	[type] [varchar](50) NOT NULL,
 	[counter] [bigint] NOT NULL
